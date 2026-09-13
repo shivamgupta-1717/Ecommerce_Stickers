@@ -22,15 +22,19 @@ apiClient.interceptors.request.use(
     if (!safeMethods.includes(config.method.toUpperCase())) {
       let csrfToken = Cookies.get("XSRF-TOKEN");
       if (!csrfToken) {
-        await axios.get(`${import.meta.env.VITE_API_BASE_URL}/csrf-token`, {
-          withCredentials: true,
-        });
-        csrfToken = Cookies.get("XSRF-TOKEN");
-        if (!csrfToken) {
-          throw new Error("Failed to retrieve CSRF token from cookies");
+        try {
+          const baseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+          const res = await axios.get(`${baseUrl}/csrf-token`, {
+            withCredentials: true,
+          });
+          csrfToken = Cookies.get("XSRF-TOKEN") || res.data?.token;
+        } catch (e) {
+          console.warn("Could not retrieve CSRF token from cookies:", e);
         }
       }
-      config.headers["X-XSRF-TOKEN"] = csrfToken;
+      if (csrfToken) {
+        config.headers["X-XSRF-TOKEN"] = csrfToken;
+      }
     }
 
     return config;
